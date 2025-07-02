@@ -1,0 +1,10 @@
+{
+  "GitHubOwner": "vam-kri",
+  "GitHubRepo": "cloudformation-microservices-infra",
+  "GitHubBranch": "main",
+  "GitHubToken": "REPLACE_WITH_SECRET",
+  "ArtifactBucket": "payment-service-artifacts",
+  "CodeBuildProjectName": "PaymentServiceBuild",
+  "ECSClusterName": "MicroservicesCluster",
+  "ECSServiceName": "payment-service"
+}
