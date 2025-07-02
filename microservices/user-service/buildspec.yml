@@ -3,11 +3,15 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region  | docker login --username AWS --password-stdin <MAIN_ACCOUNT_ID>.dkr.ecr..amazonaws.com
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - REPO_NAME=$(echo $CODEBUILD_INITIATOR | cut -d'/' -f2)
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   build:
     commands:
-      - docker build -t user-service .
-      - docker tag user-service:latest <MAIN_ACCOUNT_ID>.dkr.ecr..amazonaws.com/user-service:latest
+      - echo Build started on `date`
+      - docker build -t $REPO_NAME:$IMAGE_TAG .
+      - docker tag $REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG
   post_build:
     commands:
-      - docker push <MAIN_ACCOUNT_ID>.dkr.ecr..amazonaws.com/user-service:latest
+      - echo Build completed on `date`
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG
