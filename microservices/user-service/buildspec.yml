@@ -1,0 +1,13 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region  | docker login --username AWS --password-stdin <MAIN_ACCOUNT_ID>.dkr.ecr..amazonaws.com
+  build:
+    commands:
+      - docker build -t user-service .
+      - docker tag user-service:latest <MAIN_ACCOUNT_ID>.dkr.ecr..amazonaws.com/user-service:latest
+  post_build:
+    commands:
+      - docker push <MAIN_ACCOUNT_ID>.dkr.ecr..amazonaws.com/user-service:latest
