@@ -1,0 +1,10 @@
+{
+  "GitHubOwner": "vam-kri",
+  "GitHubRepo": "cloudformation-microservices-infra",
+  "GitHubBranch": "main",
+  "GitHubToken": "REPLACE_WITH_SECRET",
+  "ArtifactBucket": "order-service-artifacts",
+  "CodeBuildProjectName": "OrderServiceBuild",
+  "ECSClusterName": "MicroservicesCluster",
+  "ECSServiceName": "order-service"
+}
