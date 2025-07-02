@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS Task Role for Microservices to interact with AWS Services
+
+Resources:
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ECSTaskRoleForMicroservices
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowBasicSSMAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - secretsmanager:GetSecretValue
+                Resource: "*"
+
+Outputs:
+  TaskRoleArn:
+    Description: ARN of ECS Task Role
+    Value: !GetAtt ECSTaskRole.Arn

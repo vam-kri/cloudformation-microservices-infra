@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create ECR Repositories for Microservices with cross-account access
+
+Parameters:
+  PullerAccountId:
+    Type: String
+    Description: Account ID of the ECS consumer account
+
+Resources:
+  UserServiceRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: user-service
+      ImageScanningConfiguration:
+        scanOnPush: true
+      RepositoryPolicyText:
+        Version: "2008-10-17"
+        Statement:
+          - Sid: AllowCrossAccountPull
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${PullerAccountId}:root"
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+
+  OrderServiceRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: order-service
+      ImageScanningConfiguration:
+        scanOnPush: true
+      RepositoryPolicyText:
+        Version: "2008-10-17"
+        Statement:
+          - Sid: AllowCrossAccountPull
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${PullerAccountId}:root"
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+
+  PaymentServiceRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: payment-service
+      ImageScanningConfiguration:
+        scanOnPush: true
+      RepositoryPolicyText:
+        Version: "2008-10-17"
+        Statement:
+          - Sid: AllowCrossAccountPull
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${PullerAccountId}:root"
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
