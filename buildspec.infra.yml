@@ -1,19 +1,16 @@
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      python: 3.8
   pre_build:
     commands:
       - echo "Assuming role into Pooja account..."
-      - >
-        CREDS=$(aws sts assume-role \
+      - CREDS=$(aws sts assume-role \
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
           --role-session-name infra-deploy)
       - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
       - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
       - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
+
   build:
     commands:
       - echo "Deploying VPC to Pooja account"
@@ -21,8 +18,7 @@ phases:
           --template-file cloudformation/vpc.yaml \
           --stack-name SharedVPC \
           --capabilities CAPABILITY_NAMED_IAM
-      - echo "Deploying ECS Cluster to Pooja account"
-      - aws cloudformation deploy \
-          --template-file cloudformation/ecs-cluster.yaml \
-          --stack-name ECSCluster \
-          --capabilities CAPABILITY_NAMED_IAM
+
+artifacts:
+  files:
+    - '**/*'
