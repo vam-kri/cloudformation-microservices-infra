@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.x
+    commands:
+      - echo Installing dependencies...
+      - pip install --upgrade awscli
+
+  build:
+    commands:
+      - echo "Deploying VPC..."
+      - aws cloudformation deploy --template-file cloudformation/vpc.yaml --stack-name VPCStack --capabilities CAPABILITY_NAMED_IAM
+      
+      - echo "Deploying ECS Cluster..."
+      - aws cloudformation deploy --template-file cloudformation/ecs-cluster.yaml --stack-name ECSClusterStack --capabilities CAPABILITY_NAMED_IAM
+
+      - echo "Deploying IAM roles..."
+      - aws cloudformation deploy --template-file cloudformation/ecs-execution-role.yaml --stack-name ECSExecutionRoleStack --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --template-file cloudformation/ecs-task-role.yaml --stack-name ECSTaskRoleStack --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --template-file cloudformation/codebuild-role.yaml --stack-name CodeBuildRoleStack --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --template-file cloudformation/codepipeline-role.yaml --stack-name CodePipelineRoleStack --capabilities CAPABILITY_NAMED_IAM
+
+      - echo "Deploying ECR repositories..."
+      - aws cloudformation deploy --template-file cloudformation/ecr-repos.yaml --stack-name ECRReposStack
+
+artifacts:
+  files:
+    - '**/*'
