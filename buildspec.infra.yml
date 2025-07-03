@@ -28,8 +28,10 @@ phases:
           --stack-name ECSClusterStack \
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides VpcId=$(aws cloudformation describe-stacks --stack-name SharedVPC --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+
       - echo "Deploying ECR Repositories in Main Account"
-      - aws cloudformation deploy \
+      - |
+        aws cloudformation deploy \
           --template-file cloudformation/ecr-repos.yaml \
           --stack-name MicroservicesECRRepos \
           --capabilities CAPABILITY_NAMED_IAM \
