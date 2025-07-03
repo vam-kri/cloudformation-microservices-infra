@@ -4,15 +4,14 @@ phases:
   pre_build:
     commands:
       - echo "Assuming role into Pooja account..."
-      - |
-        CREDS=$(aws sts assume-role \
+      - CREDS=$(aws sts assume-role \
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
           --role-session-name infra-deploy)
       - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
       - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
       - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
-   build:
+  build:
     commands:
       - echo "Deploying VPC to Pooja account"
       - aws cloudformation deploy \
@@ -21,12 +20,9 @@ phases:
           --capabilities CAPABILITY_NAMED_IAM
 
       - echo "Deploying ECS Cluster to Pooja account"
+      - VPC_ID=$(aws cloudformation describe-stacks --stack-name SharedVPC --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
       - aws cloudformation deploy \
           --template-file cloudformation/ecs-cluster.yaml \
           --stack-name ECSClusterStack \
           --capabilities CAPABILITY_NAMED_IAM \
-          --parameter-overrides VpcId=$(aws cloudformation describe-stacks --stack-name SharedVPC --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
-
-artifacts:
-  files:
-    - '**/*'
+          --parameter-overrides VpcId=$VPC_ID
