@@ -3,28 +3,26 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.x
+      python: 3.8
+  pre_build:
     commands:
-      - echo Installing dependencies...
-      - pip install --upgrade awscli
-
+      - echo "Assuming role into Pooja account..."
+      - >
+        CREDS=$(aws sts assume-role \
+          --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
+          --role-session-name infra-deploy)
+      - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
+      - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
+      - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
   build:
     commands:
-      - echo "Deploying VPC..."
-      - aws cloudformation deploy --template-file cloudformation/vpc.yaml --stack-name VPCStack --capabilities CAPABILITY_NAMED_IAM
-      
-      - echo "Deploying ECS Cluster..."
-      - aws cloudformation deploy --template-file cloudformation/ecs-cluster.yaml --stack-name ECSClusterStack --capabilities CAPABILITY_NAMED_IAM
-
-      - echo "Deploying IAM roles..."
-      - aws cloudformation deploy --template-file cloudformation/ecs-execution-role.yaml --stack-name ECSExecutionRoleStack --capabilities CAPABILITY_NAMED_IAM
-      - aws cloudformation deploy --template-file cloudformation/ecs-task-role.yaml --stack-name ECSTaskRoleStack --capabilities CAPABILITY_NAMED_IAM
-      - aws cloudformation deploy --template-file cloudformation/codebuild-role.yaml --stack-name CodeBuildRoleStack --capabilities CAPABILITY_NAMED_IAM
-      - aws cloudformation deploy --template-file cloudformation/codepipeline-role.yaml --stack-name CodePipelineRoleStack --capabilities CAPABILITY_NAMED_IAM
-
-      - echo "Deploying ECR repositories..."
-      - aws cloudformation deploy --template-file cloudformation/ecr-repos.yaml --stack-name ECRReposStack
-
-artifacts:
-  files:
-    - '**/*'
+      - echo "Deploying VPC to Pooja account"
+      - aws cloudformation deploy \
+          --template-file cloudformation/vpc.yaml \
+          --stack-name SharedVPC \
+          --capabilities CAPABILITY_NAMED_IAM
+      - echo "Deploying ECS Cluster to Pooja account"
+      - aws cloudformation deploy \
+          --template-file cloudformation/ecs-cluster.yaml \
+          --stack-name ECSCluster \
+          --capabilities CAPABILITY_NAMED_IAM
