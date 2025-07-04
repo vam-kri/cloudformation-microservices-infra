@@ -6,5 +6,6 @@
   "ArtifactBucket": "payment-service-artifacts",
   "CodeBuildProjectName": "PaymentServiceBuild",
   "ECSClusterName": "MicroservicesCluster",
-  "ECSServiceName": "payment-service"
+  "ECSServiceName": "payment-service",
+  "Service": "payment-service"
 }
