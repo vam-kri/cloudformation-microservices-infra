@@ -17,7 +17,8 @@ phases:
   pre_build:
     commands:
       - echo "Assuming role into Pooja account..."
-      - CREDS=$(aws sts assume-role \
+      - |
+        CREDS=$(aws sts assume-role \
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
           --role-session-name deploy-$CODEBUILD_RESOLVED_SOURCE_VERSION)
 
@@ -46,8 +47,7 @@ phases:
           --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
           --output text)
 
-      # Read service name from pipeline variables
-      - echo "Getting service name from environment variable"
+      - echo "Getting service name from environment variable..."
       - SERVICE_NAME=$(echo $SERVICE)
 
       - echo "ECR URI"
