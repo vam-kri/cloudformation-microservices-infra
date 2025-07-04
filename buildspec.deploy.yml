@@ -58,9 +58,10 @@ phases:
     commands:
       - echo "Deploying $SERVICE_NAME using CloudFormation"
       - |
+        STACK_NAME=$(echo $SERVICE_NAME | sed 's/^./\U&/')ECSStack
         aws cloudformation deploy \
           --template-file cloudformation/$SERVICE_NAME-deploy.yaml \
-          --stack-name ${SERVICE_NAME^}ECSStack \
+          --stack-name $STACK_NAME \
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides \
             ClusterName=$CLUSTER_NAME \
