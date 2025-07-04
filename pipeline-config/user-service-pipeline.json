@@ -6,5 +6,6 @@
   "ArtifactBucket": "user-service-artifacts",
   "CodeBuildProjectName": "UserServiceBuild",
   "ECSClusterName": "MicroservicesCluster",
-  "ECSServiceName": "user-service"
+  "ECSServiceName": "user-service",
+  "Service": "user-service"
 }
