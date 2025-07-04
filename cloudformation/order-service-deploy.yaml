@@ -1,26 +1,17 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Deploy user-service to ECS with ALB
+Description: Deploy order-service to ECS with ALB
 
 Parameters:
   ClusterName:
     Type: String
-    Description: Name of the ECS Cluster
-
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: VPC ID where ECS is deployed
-
   Subnet1:
     Type: AWS::EC2::Subnet::Id
-    Description: Public Subnet 1
-
   Subnet2:
     Type: AWS::EC2::Subnet::Id
-    Description: Public Subnet 2
-
   ContainerImage:
     Type: String
-    Description: URI of the container image in ECR
 
 Resources:
   TaskExecutionRole:
@@ -35,12 +26,12 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      RoleName: user-service-task-execution-role
+      RoleName: order-service-task-execution-role
 
-  UserServiceTaskDefinition:
+  OrderServiceTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: user-service-task
+      Family: order-service-task
       Cpu: "256"
       Memory: "512"
       NetworkMode: awsvpc
@@ -48,13 +39,13 @@ Resources:
         - FARGATE
       ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       ContainerDefinitions:
-        - Name: user-service
+        - Name: order-service
           Image: !Ref ContainerImage
           PortMappings:
             - ContainerPort: 5000
               Protocol: tcp
 
-  UserServiceSecurityGroup:
+  OrderServiceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow HTTP access to ECS service
@@ -68,19 +59,19 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: user-service-alb
+      Name: order-service-alb
       Subnets:
         - !Ref Subnet1
         - !Ref Subnet2
       SecurityGroups:
-        - !Ref UserServiceSecurityGroup
+        - !Ref OrderServiceSecurityGroup
       Scheme: internet-facing
       Type: application
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: user-service-tg
+      Name: order-service-tg
       Port: 5000
       Protocol: HTTP
       VpcId: !Ref VpcId
@@ -100,11 +91,11 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
 
-  UserService:
+  OrderService:
     Type: AWS::ECS::Service
     DependsOn: Listener
     Properties:
-      ServiceName: user-service
+      ServiceName: order-service
       Cluster: !Ref ClusterName
       LaunchType: FARGATE
       DesiredCount: 1
@@ -115,14 +106,14 @@ Resources:
             - !Ref Subnet1
             - !Ref Subnet2
           SecurityGroups:
-            - !Ref UserServiceSecurityGroup
-      TaskDefinition: !Ref UserServiceTaskDefinition
+            - !Ref OrderServiceSecurityGroup
+      TaskDefinition: !Ref OrderServiceTaskDefinition
       LoadBalancers:
         - TargetGroupArn: !Ref TargetGroup
-          ContainerName: user-service
+          ContainerName: order-service
           ContainerPort: 5000
 
 Outputs:
   LoadBalancerDNS:
-    Description: Public DNS of the user-service ALB
+    Description: Public DNS of the order-service ALB
     Value: !GetAtt LoadBalancer.DNSName
