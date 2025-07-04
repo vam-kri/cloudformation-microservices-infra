@@ -21,7 +21,7 @@ phases:
       - echo "Assuming role into Pooja account..."
       - CREDS=$(aws sts assume-role \
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
-          --role-session-name deploy-user-service)
+          --role-session-name deploy-${SERVICE_NAME})
 
       - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
       - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
@@ -48,15 +48,15 @@ phases:
           --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
           --output text)
 
-      - echo "Constructing ECR image URI..."
-      - IMAGE_URI=044854092841.dkr.ecr.us-east-1.amazonaws.com/user-service:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo "Constructing ECR image URI for $SERVICE_NAME"
+      - IMAGE_URI=044854092841.dkr.ecr.us-east-1.amazonaws.com/${SERVICE_NAME}:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
 
   build:
     commands:
-      - echo "Deploying ECS service with dynamic parameters..."
+      - echo "Deploying $SERVICE_NAME ECS service with dynamic parameters..."
       - aws cloudformation deploy \
-          --template-file cloudformation/user-service-deploy.yaml \
-          --stack-name UserServiceECSStack \
+          --template-file cloudformation/${SERVICE_NAME}-deploy.yaml \
+          --stack-name ${SERVICE_NAME^}ServiceECSStack \
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides \
               ClusterName=$CLUSTER_NAME \
