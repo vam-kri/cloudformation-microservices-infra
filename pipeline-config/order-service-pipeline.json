@@ -6,5 +6,6 @@
   "ArtifactBucket": "order-service-artifacts",
   "CodeBuildProjectName": "OrderServiceBuild",
   "ECSClusterName": "MicroservicesCluster",
-  "ECSServiceName": "order-service"
+  "ECSServiceName": "order-service",
+  "Service": "order-service"
 }
