@@ -27,22 +27,23 @@ phases:
       - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
       - echo "Fetching CloudFormation Outputs..."
-      - VPC_ID=$(aws cloudformation describe-stacks \
+      - |
+        VPC_ID=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" \
           --output text)
-
-      - SUBNET1=$(aws cloudformation describe-stacks \
+      - |
+        SUBNET1=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1Id'].OutputValue" \
           --output text)
-
-      - SUBNET2=$(aws cloudformation describe-stacks \
+      - |
+        SUBNET2=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2Id'].OutputValue" \
           --output text)
-
-      - CLUSTER_NAME=$(aws cloudformation describe-stacks \
+      - |
+        CLUSTER_NAME=$(aws cloudformation describe-stacks \
           --stack-name ECSClusterStack \
           --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
           --output text)
@@ -56,13 +57,14 @@ phases:
   build:
     commands:
       - echo "Deploying $SERVICE_NAME using CloudFormation"
-      - aws cloudformation deploy \
+      - |
+        aws cloudformation deploy \
           --template-file cloudformation/$SERVICE_NAME-deploy.yaml \
           --stack-name ${SERVICE_NAME^}ECSStack \
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides \
-              ClusterName=$CLUSTER_NAME \
-              VpcId=$VPC_ID \
-              Subnet1=$SUBNET1 \
-              Subnet2=$SUBNET2 \
-              ContainerImage=$IMAGE_URI
+            ClusterName=$CLUSTER_NAME \
+            VpcId=$VPC_ID \
+            Subnet1=$SUBNET1 \
+            Subnet2=$SUBNET2 \
+            ContainerImage=$IMAGE_URI
