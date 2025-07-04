@@ -1,0 +1,44 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Assuming role into Pooja account..."
+      - CREDS=$(aws sts assume-role \
+          --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
+          --role-session-name deploy-user-service)
+      - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
+      - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
+      - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
+
+      - echo "Fetching VPC and Subnet IDs from Pooja account..."
+      - VPC_ID=$(aws cloudformation describe-stacks \
+          --stack-name SharedVPC \
+          --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" \
+          --output text)
+
+      - SUBNET1=$(aws cloudformation describe-stacks \
+          --stack-name SharedVPC \
+          --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1Id'].OutputValue" \
+          --output text)
+
+      - SUBNET2=$(aws cloudformation describe-stacks \
+          --stack-name SharedVPC \
+          --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2Id'].OutputValue" \
+          --output text)
+
+      - IMAGE_URI=044854092841.dkr.ecr.us-east-1.amazonaws.com/user-service:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+
+  build:
+    commands:
+      - echo "Deploying user-service to ECS in Pooja account..."
+      - aws cloudformation deploy \
+          --template-file cloudformation/user-service-deploy.yaml \
+          --stack-name UserServiceECSStack \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+              ClusterName=MicroservicesCluster \
+              VpcId=$VPC_ID \
+              Subnet1=$SUBNET1 \
+              Subnet2=$SUBNET2 \
+              ContainerImage=$IMAGE_URI
