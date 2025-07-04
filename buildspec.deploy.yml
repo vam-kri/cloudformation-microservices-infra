@@ -20,43 +20,45 @@ phases:
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
           --role-session-name deploy-$CODEBUILD_RESOLVED_SOURCE_VERSION)
 
-        export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
-        export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
-        export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
+      - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
+      - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
+      - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
       - echo "Fetching CloudFormation Outputs..."
-      - VPC_ID=$(aws cloudformation describe-stacks \
+      - |
+        VPC_ID=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" \
           --output text)
-      - SUBNET1=$(aws cloudformation describe-stacks \
+
+      - |
+        SUBNET1=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1Id'].OutputValue" \
           --output text)
-      - SUBNET2=$(aws cloudformation describe-stacks \
+
+      - |
+        SUBNET2=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2Id'].OutputValue" \
           --output text)
-      - CLUSTER_NAME=$(aws cloudformation describe-stacks \
+
+      - |
+        CLUSTER_NAME=$(aws cloudformation describe-stacks \
           --stack-name ECSClusterStack \
           --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
           --output text)
 
       - echo "Getting service name from environment variable..."
-      - |
-        if [ -z "$SERVICE" ]; then
-          echo "❌ SERVICE environment variable is not set. Exiting."
-          exit 1
-        fi
-      - SERVICE_NAME=$SERVICE
+      - SERVICE_NAME=$(echo $SERVICE)
       - echo "ECR URI"
       - IMAGE_URI=044854092841.dkr.ecr.us-east-1.amazonaws.com/$SERVICE_NAME:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
 
   build:
     commands:
       - echo "Deploying $SERVICE_NAME using CloudFormation"
-      - STACK_NAME=$(echo $SERVICE_NAME | sed 's/^./\U&/')ECSStack
       - |
+        STACK_NAME=$(echo $SERVICE_NAME | sed 's/^./\U&/')ECSStack
         aws cloudformation deploy \
           --template-file cloudformation/$SERVICE_NAME-deploy.yaml \
           --stack-name $STACK_NAME \
@@ -68,3 +70,6 @@ phases:
             Subnet2=$SUBNET2 \
             ContainerImage=$IMAGE_URI
 
+artifacts:
+  files:
+    - '**/*'
