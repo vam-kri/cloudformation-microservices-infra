@@ -11,9 +11,9 @@ phases:
 
       # Install AWS CLI v2
       - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-      - unzip awscliv2.zip
+      - unzip -q awscliv2.zip
       - ./aws/install
-      - export PATH=$PATH:/usr/local/bin/aws
+      - export PATH=$PATH:/usr/local/bin
       - aws --version
 
   pre_build:
@@ -22,11 +22,12 @@ phases:
       - CREDS=$(aws sts assume-role \
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
           --role-session-name deploy-user-service)
+
       - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
       - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
       - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
-      - echo "Fetching VPC and Subnet IDs from Pooja account..."
+      - echo "Fetching dynamic outputs from CloudFormation stack..."
       - VPC_ID=$(aws cloudformation describe-stacks \
           --stack-name SharedVPC \
           --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" \
@@ -42,17 +43,23 @@ phases:
           --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2Id'].OutputValue" \
           --output text)
 
+      - CLUSTER_NAME=$(aws cloudformation describe-stacks \
+          --stack-name ECSClusterStack \
+          --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
+          --output text)
+
+      - echo "Constructing ECR image URI..."
       - IMAGE_URI=044854092841.dkr.ecr.us-east-1.amazonaws.com/user-service:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
 
   build:
     commands:
-      - echo "Deploying user-service to ECS in Pooja account..."
+      - echo "Deploying ECS service with dynamic parameters..."
       - aws cloudformation deploy \
           --template-file cloudformation/user-service-deploy.yaml \
           --stack-name UserServiceECSStack \
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides \
-              ClusterName=MicroservicesCluster \
+              ClusterName=$CLUSTER_NAME \
               VpcId=$VPC_ID \
               Subnet1=$SUBNET1 \
               Subnet2=$SUBNET2 \
