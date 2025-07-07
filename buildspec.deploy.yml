@@ -19,56 +19,57 @@ phases:
         CREDS=$(aws sts assume-role \
           --role-arn arn:aws:iam::992313771121:role/CrossAccountDeploymentRole \
           --role-session-name deploy-$CODEBUILD_RESOLVED_SOURCE_VERSION)
+        export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
+        export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
+        export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
-      - export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
-      - export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
-      - export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
-
-      - echo "Fetching CloudFormation Outputs..."
-      - |
-        VPC_ID=$(aws cloudformation describe-stacks \
-          --stack-name SharedVPC \
-          --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" \
-          --output text)
-
-      - |
-        SUBNET1=$(aws cloudformation describe-stacks \
-          --stack-name SharedVPC \
-          --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1Id'].OutputValue" \
-          --output text)
-
-      - |
-        SUBNET2=$(aws cloudformation describe-stacks \
-          --stack-name SharedVPC \
-          --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2Id'].OutputValue" \
-          --output text)
-
-      - |
-        CLUSTER_NAME=$(aws cloudformation describe-stacks \
-          --stack-name ECSClusterStack \
-          --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
-          --output text)
-
-      - echo "Getting service name from environment variable..."
+      - echo "Fetching ECS details..."
       - SERVICE_NAME=$(echo $SERVICE)
-      - echo "ECR URI"
-      - IMAGE_URI=044854092841.dkr.ecr.us-east-1.amazonaws.com/$SERVICE_NAME:$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - CLUSTER_NAME="MicroservicesCluster"
+      - echo "Resolved SERVICE_NAME: $SERVICE_NAME"
+      - echo "Getting current task definition ARN..."
+      - TASK_DEF_ARN=$(aws ecs describe-services \
+          --cluster $CLUSTER_NAME \
+          --services $SERVICE_NAME \
+          --query "services[0].taskDefinition" \
+          --output text)
+
+      - echo "Fetching current task definition JSON..."
+      - aws ecs describe-task-definition \
+          --task-definition $TASK_DEF_ARN \
+          --query "taskDefinition" > taskdef.json
+
+      - echo "Creating new image URI..."
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_URI="044854092841.dkr.ecr.us-east-1.amazonaws.com/$SERVICE_NAME:$IMAGE_TAG"
+      - echo "New IMAGE_URI: $IMAGE_URI"
+
+      - echo "Updating taskdef.json with new image..."
+      - |
+        jq --arg IMAGE "$IMAGE_URI" '.containerDefinitions[0].image=$IMAGE |
+        { 
+          family: .family, 
+          networkMode: .networkMode, 
+          containerDefinitions: .containerDefinitions, 
+          requiresCompatibilities: .requiresCompatibilities, 
+          cpu: .cpu, 
+          memory: .memory, 
+          executionRoleArn: .executionRoleArn 
+        }' taskdef.json > new-taskdef.json
 
   build:
     commands:
-      - echo "Deploying $SERVICE_NAME using CloudFormation"
-      - |
-        STACK_NAME=$(echo $SERVICE_NAME | sed 's/^./\U&/')ECSStack
-        aws cloudformation deploy \
-          --template-file cloudformation/$SERVICE_NAME-deploy.yaml \
-          --stack-name $STACK_NAME \
-          --capabilities CAPABILITY_NAMED_IAM \
-          --parameter-overrides \
-            ClusterName=$CLUSTER_NAME \
-            VpcId=$VPC_ID \
-            Subnet1=$SUBNET1 \
-            Subnet2=$SUBNET2 \
-            ContainerImage=$IMAGE_URI
+      - echo "Registering new task definition..."
+      - NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+          --cli-input-json file://new-taskdef.json \
+          --query 'taskDefinition.taskDefinitionArn' \
+          --output text)
+
+      - echo "Updating ECS service with new task definition..."
+      - aws ecs update-service \
+          --cluster $CLUSTER_NAME \
+          --service $SERVICE_NAME \
+          --task-definition $NEW_TASK_DEF_ARN
 
 artifacts:
   files:
