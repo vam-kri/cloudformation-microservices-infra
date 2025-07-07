@@ -61,8 +61,8 @@ Resources:
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 5000    # ✅ Updated to match container & target group port
+          ToPort: 5000
           CidrIp: 0.0.0.0/0
 
   LoadBalancer:
@@ -85,7 +85,8 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VpcId
       TargetType: ip
-      HealthCheckPath: /
+      HealthCheckPath: /            # ✅ Ensure your container responds to `/`
+      HealthCheckProtocol: HTTP
       HealthCheckIntervalSeconds: 30
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
