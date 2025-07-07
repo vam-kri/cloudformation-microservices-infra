@@ -21,13 +21,22 @@ phases:
           --stack-name SharedVPC \
           --capabilities CAPABILITY_NAMED_IAM
 
-      - echo "Deploying ECS Cluster to Pooja account"
+      - echo "Deploying ECS Cluster + ECS Service + ALB to Pooja account"
       - |
+        VPC_ID=$(aws cloudformation describe-stacks --stack-name SharedVPC \
+          --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+
+        SUBNET1=$(aws cloudformation describe-stacks --stack-name SharedVPC \
+          --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1Id'].OutputValue" --output text)
+
+        SUBNET2=$(aws cloudformation describe-stacks --stack-name SharedVPC \
+          --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2Id'].OutputValue" --output text)
+
         aws cloudformation deploy \
           --template-file cloudformation/ecs-cluster.yaml \
           --stack-name ECSClusterStack \
           --capabilities CAPABILITY_NAMED_IAM \
-          --parameter-overrides VpcId=$(aws cloudformation describe-stacks --stack-name SharedVPC --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+          --parameter-overrides VpcId=$VPC_ID Subnet1=$SUBNET1 Subnet2=$SUBNET2
 
       - echo "Unsetting assumed role to switch back to Main account"
       - |
@@ -42,6 +51,8 @@ phases:
           --stack-name MicroservicesECRRepos \
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides PullerAccountId=992313771121
+
+      - echo "Triggering image build for all microservices"
       - |
         for SERVICE in user-service order-service payment-service; do
           echo "Triggering build for $SERVICE"
@@ -60,6 +71,7 @@ phases:
             sleep 10
           done
         done
+
 artifacts:
   files:
     - '**/*'
